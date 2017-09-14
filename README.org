@@ -1,25 +1,60 @@
 #+TITLE: borg4platypus
-#+OPTIONS: toc:nil h:1
+#+OPTIONS: toc:nil h:1 ^:nil
 
 * Purpose
 
-Provide an Algorithm class in the Platypus framework that runs the C version of BORG under the hoods, either serially or in parallel.
+Provide an (HACKY & EXPERIMENTAL) Algorithm class in the Platypus framework that runs the C version of BORG under the hoods, either serially or in parallel.
 
 * Requirements
 
-- Python 3.6+ (sorry for that, using f-strings!)
-- [[https://github.com/Project-Platypus/Platypus][Platypus]] installed in development mode (e.g. ~python -m pip install -e .~ in the cloned repo)
-- [[https://github.com/uqfoundation/dill][dill]] (e.g. ~conda install dill~)
-- borg.py
-
-* Usage
-
-- Install with
+- Python 3.6+ (f-strings rock!)
+- [[https://github.com/Project-Platypus/Platypus][Platypus]] installed in development mode, e.g.
   #+BEGIN_SRC shell
-  git clone XXX
-  python -m pip install -e .
+  git clone git@github.com:Project-Platypus/Platypus.git
+  cd Platypus
+  python -m pip install --user -e .
+  #+END_SRC
+- [[https://github.com/uqfoundation/dill][dill]] installed, e.g.
+  #+BEGIN_SRC shell
+  conda install dill
+  #+END_SRC
+- [[https://bitbucket.org/dmh309/serial-borg-moea][Serial Borg MOEA]] installed via git
+  #+BEGIN_SRC shell
+  git clone git@bitbucket.org:dmh309/serial-borg-moea.git
+  #+END_SRC
+- Path of ~borg.py~ in ~PYTHONPATH~, e.g.
+  #+BEGIN_SRC shell
+  export PYTHONPATH="$HOME/tools/borg/plugins/Python:$PYTHONPATH"
+  #+END_SRC
+  in your ~.bash_profile~.
+- Path of compiled BORG libs in ~LD_LIBRARY_PATH~, e.g.
+  #+BEGIN_SRC shell
+  export LD_LIBRARY_PATH="$HOME/tools/borg/build/libs:$LD_LIBRARY_PATH
+  #+END_SRC
+  in your ~.bash_profile~.
+
+* Installation
+
+- Download and install this package
+  #+BEGIN_SRC shell
+  git clone git@github.com:jackjackk/borg4platypus.git
+  cd borg4platypus
+  python -m pip install --user -e .
+  #+END_SRC
+- Patch the Python wrapper of Serial Borg MOEA to support Python 3.6 & this lib
+  #+BEGIN_SRC shell
+  cd /path/to/serial-borg-moea/repo
+  git am /path/to/borg4platypus/bitbucket-serial-borg-moea.patch
+  #+END_SRC
+- Make sure Borg works (in particular check that environmental variables are set correctly)
+  #+BEGIN_SRC shell
+  cd
+  python -c 'from borg import Configuration;Configuration.initialize()'
   #+END_SRC
 
+* Usage
+Check ~examples/*.py~. Just use ~ExternalBorgC~ as an ~Algorithm~ class which requires an ~epsilons~ parameter (either single-valued or a list, i.e. one epsilon for each objective) after the problem argument. Whether a serial or parallel instance is launched depends on the ~mpirun~ argument.
+ 
 * License
 
 The MIT License (MIT)

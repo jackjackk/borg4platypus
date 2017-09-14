@@ -6,11 +6,11 @@ LOGGER = logging.getLogger(f"Platypus")
 
 
 class BorgC(Algorithm):
-    def __init__(self, problem, obj_eps=1e-2, seed=None, log_frequency=None, name=None):
+    def __init__(self, problem, epsilons, seed=None, log_frequency=None, name=None):
         """
         Wraps the Python wrapper of BORG to make it compatible w/ Platypus.
         :param problem: Problem instance
-        :param obj_eps: objective space resolution
+        :param epsilons: objective space resolution
         :param log_frequency: frequency of output
         :param name: prefix string used for output filenames
         """
@@ -46,9 +46,9 @@ class BorgC(Algorithm):
             return solution.objectives
         '''
 
-        if not isinstance(obj_eps, list):
-            obj_eps = [obj_eps]*problem.nobjs
-        self.obj_eps = obj_eps
+        if not isinstance(epsilons, list):
+            epsilons = [epsilons]*problem.nobjs
+        self.epsilons = epsilons
 
     def borg_init(self):
         import borg
@@ -57,7 +57,7 @@ class BorgC(Algorithm):
             self.borg.Configuration.seed(self.seed)
         borg_obj = self.borg.Borg(self.problem.nvars, self.problem.nobjs, self.problem.nconstrs, self.problem.borg_function)
         borg_obj.setBounds(*[[vtype.min_value, vtype.max_value] for vtype in self.problem.types])
-        borg_obj.setEpsilons(*self.obj_eps)
+        borg_obj.setEpsilons(*self.epsilons)
         return borg_obj
 
     def borg_deinit(self):
@@ -102,8 +102,8 @@ class SerialBorgC(BorgC):
 
 
 class MpiBorgC(BorgC):
-    def __init__(self, problem, obj_eps=1e-2, seed=None, log_frequency=None, name=None):
-        super(MpiBorgC, self).__init__(problem, obj_eps=obj_eps, seed=seed,
+    def __init__(self, problem, epsilons, seed=None, log_frequency=None, name=None):
+        super(MpiBorgC, self).__init__(problem, epsilons=epsilons, seed=seed,
                                        log_frequency=log_frequency, name=name)
         # rename runtimefile -> runtime
         if name is not None:
@@ -125,11 +125,11 @@ class MpiBorgC(BorgC):
 
 
 class ExternalBorgC(BorgC):
-    def __init__(self, problem, obj_eps=1e-2, seed=None, log_frequency=None, name=None, mpirun=None):
+    def __init__(self, problem, epsilons, seed=None, log_frequency=None, name=None, mpirun=None):
         if mpirun == '-np 1':
             mpirun = None
         self.mpirun = mpirun
-        super(ExternalBorgC, self).__init__(problem, obj_eps=obj_eps, seed=seed,
+        super(ExternalBorgC, self).__init__(problem, epsilons=epsilons, seed=seed,
                                        log_frequency=log_frequency, name=name)
 
 
@@ -148,7 +148,7 @@ class ExternalBorgC(BorgC):
             passed_name = None
         else:
             passed_name = os.path.join(os.getcwd(), self.name)
-        algo2dump = borg_class(self.problem, obj_eps=self.obj_eps, seed=self.seed,
+        algo2dump = borg_class(self.problem, epsilons=self.epsilons, seed=self.seed,
                                log_frequency=self.log_frequency,
                                name=passed_name)
         from tempfile import TemporaryDirectory
