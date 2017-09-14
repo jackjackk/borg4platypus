@@ -50,7 +50,11 @@ Provide an (HACKY & EXPERIMENTAL) Algorithm class in the Platypus framework that
 
 * Usage
 Check ~examples/*.py~. Just use ~ExternalBorgC~ as an ~Algorithm~ class which requires an ~epsilons~ parameter (either single-valued or a list, i.e. one epsilon for each objective) after the ~problem~ argument. Whether a serial or parallel instance is launched depends on the ~mpirun~ argument.
- 
+
+* Limitations
+- Only few options are supported and actually passed through the wrappers.
+- Standard Python evaluators (e.g. for running multiple experiments in parallel in Python) won't work: you will need to use [[https://pypi.python.org/pypi/pathos][pathos]].
+
 * License
 
 The MIT License (MIT)
