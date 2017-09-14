@@ -3,7 +3,7 @@
 
 * Purpose
 
-Provide an (HACKY & EXPERIMENTAL) Algorithm class in the Platypus framework that runs the C version of BORG under the hoods, either serially or in parallel.
+Provide an (HACKY & EXPERIMENTAL) Algorithm class in the Platypus framework that runs the C version of BORG under the hood, either serially or in parallel.
 
 * Requirements
 
@@ -18,20 +18,18 @@ Provide an (HACKY & EXPERIMENTAL) Algorithm class in the Platypus framework that
   #+BEGIN_SRC shell
   conda install dill
   #+END_SRC
-- [[https://bitbucket.org/dmh309/serial-borg-moea][Serial Borg MOEA]] installed via git
+- [[https://bitbucket.org/dmh309/serial-borg-moea][Serial Borg MOEA]] installed via git, e.g.
   #+BEGIN_SRC shell
   git clone git@bitbucket.org:dmh309/serial-borg-moea.git
   #+END_SRC
-- Path of ~borg.py~ in ~PYTHONPATH~, e.g.
+- Path of ~borg.py~ in ~PYTHONPATH~, e.g. adding the following in your ~.bash_profile~
   #+BEGIN_SRC shell
   export PYTHONPATH="$HOME/tools/borg/plugins/Python:$PYTHONPATH"
   #+END_SRC
-  in your ~.bash_profile~.
-- Path of compiled BORG libs in ~LD_LIBRARY_PATH~, e.g.
+- Path of compiled BORG libs in ~LD_LIBRARY_PATH~, e.g. adding the following in your ~.bash_profile~
   #+BEGIN_SRC shell
-  export LD_LIBRARY_PATH="$HOME/tools/borg/build/libs:$LD_LIBRARY_PATH
+  export LD_LIBRARY_PATH="$HOME/tools/borg/build/libs:$LD_LIBRARY_PATH"
   #+END_SRC
-  in your ~.bash_profile~.
 
 * Installation
 
