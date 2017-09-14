@@ -1,16 +1,15 @@
-From 14a3876746a18a1293faa999ce54b283463c90ad Mon Sep 17 00:00:00 2001
+From 6e265b430f9c01339da99ac87aae3c9d2bab2ebb Mon Sep 17 00:00:00 2001
 From: jack <jackjackk@gmail.com>
-Date: Wed, 13 Sep 2017 22:15:26 -0400
-Subject: [PATCH] patched BitBucket master to work w/ Python 3.6 &
- borg4platypus
+Date: Wed, 13 Sep 2017 23:12:44 -0400
+Subject: [PATCH] Patch to make borg.py work w/ Python 3.6 & borg4platypus
 
 ---
- plugins/Python/borg.py | 77 ++++++++++++++++++++++++++++++++------------------
+ plugins/Python/borg.py | 82 +++++++++++++++++++++++++++++++++-----------------
  plugins/Python/test.py |  2 +-
- 2 files changed, 51 insertions(+), 28 deletions(-)
+ 2 files changed, 55 insertions(+), 29 deletions(-)
 
 diff --git a/plugins/Python/borg.py b/plugins/Python/borg.py
-index 52481de..f571971 100644
+index 52481de..3b9c30b 100644
 --- a/plugins/Python/borg.py
 +++ b/plugins/Python/borg.py
 @@ -111,15 +111,18 @@ class Configuration:
@@ -52,7 +51,7 @@ index 52481de..f571971 100644
  
      @staticmethod
      def enableDebugging():
-@@ -180,10 +183,10 @@ class Configuration:
+@@ -180,15 +183,18 @@ class Configuration:
          except AttributeError:
              # The serial Borg MOEA C library is loaded; switch to parallel
              try:
@@ -65,7 +64,16 @@ index 52481de..f571971 100644
                  except OSError:
                      raise OSError("Unable to locate the parallel Borg MOEA C library")
  
-@@ -196,11 +199,14 @@ class Configuration:
+         # The following line is needed to load the MPI library correctly
+-        CDLL("libmpi.so.0", RTLD_GLOBAL)
++        try:
++            CDLL("libmpi.so.0", RTLD_GLOBAL)
++        except:
++            CDLL("libmpi.so", RTLD_GLOBAL)
+ 
+         # Pass the command-line arguments to MPI_Init
+         argc = c_int(len(sys.argv))
+@@ -196,11 +202,14 @@ class Configuration:
          argv = CHARPP()
  
          for i in range(len(sys.argv)):
@@ -83,7 +91,7 @@ index 52481de..f571971 100644
  
          Configuration.startedMPI = True
  
-@@ -307,6 +313,7 @@ class Borg:
+@@ -307,6 +316,7 @@ class Borg:
              self.CMPFUNC = CFUNCTYPE(c_int, POINTER(c_double), POINTER(c_double), POINTER(c_double))
  
          self.callback = self.CMPFUNC(self.function)
@@ -91,7 +99,7 @@ index 52481de..f571971 100644
          self.reference = c_void_p(Configuration.libborg.BORG_Problem_create(numberOfVariables, numberOfObjectives, numberOfConstraints, self.callback))
  
          if bounds:
-@@ -373,7 +380,7 @@ class Borg:
+@@ -373,7 +383,7 @@ class Borg:
          Configuration.libborg.BORG_Problem_set_bounds(self.reference, index, c_double(lowerBound), c_double(upperBound))
  
      def solveMPI(self, islands=1, maxTime=None, maxEvaluations=None, initialization=None, runtime=None,
@@ -100,7 +108,7 @@ index 52481de..f571971 100644
          """ Runs the master-slave or multi-master Borg MOEA using MPI.
  
          islands        - The number of islands
-@@ -385,6 +392,7 @@ class Borg:
+@@ -385,6 +395,7 @@ class Borg:
          allEvaluations - Filename pattern for saving all evaluations (the filename should include
                           one %d which gets replaced by the island index).  Since this can quickly
                           generate large files, use this option with caution.
@@ -108,7 +116,7 @@ index 52481de..f571971 100644
          
          Note: All nodes must invoke solveMPI.  However, only one node will return the discovered
          Pareto optimal solutions.  The rest will return None.
-@@ -412,15 +420,19 @@ class Borg:
+@@ -412,15 +423,19 @@ class Borg:
              Configuration.libborg.BORG_Algorithm_ms_max_evaluations(c_int(maxEvaluations))
  
          if initialization and islands > 1:
@@ -131,7 +139,7 @@ index 52481de..f571971 100644
  
          return Result(result, self) if result else None
  
-@@ -438,36 +450,37 @@ class Borg:
+@@ -438,36 +453,37 @@ class Borg:
  
          maxEvaluations = settings.get("maxEvaluations", 10000)
          start = time.clock()
@@ -178,7 +186,7 @@ index 52481de..f571971 100644
          Configuration.libborg.BORG_Algorithm_set_operator(algorithm, 0, sbx)
          Configuration.libborg.BORG_Algorithm_set_operator(algorithm, 1, de)
          Configuration.libborg.BORG_Algorithm_set_operator(algorithm, 2, pcx)
-@@ -542,7 +555,8 @@ class Borg:
+@@ -542,7 +558,8 @@ class Borg:
                  if fp is None:
                      statistics.append(entry)
                  else:
@@ -188,7 +196,7 @@ index 52481de..f571971 100644
                      if runtimeformat == 'optimizedv':
                          row = ["{0}".format(entry[dynamic]) for dynamic in dynamics_header]
                          fp.write("//")
-@@ -586,7 +600,8 @@ class Borg:
+@@ -586,7 +603,8 @@ class Borg:
  
                  lastSnapshot = currentEvaluations
  
@@ -198,7 +206,7 @@ index 52481de..f571971 100644
          if "runtimefile" in settings:
              fp.close()
  
-@@ -643,7 +658,7 @@ class Solution:
+@@ -643,7 +661,7 @@ class Solution:
  
      def display(self, out=sys.stdout, separator=" "):
          """ Prints the decision variables, objectives, and constraints to standard output. """
@@ -207,7 +215,7 @@ index 52481de..f571971 100644
  
      def violatesConstraints(self):
          """ Returns True if this solution violates one or more constraints; False otherwise. """
-@@ -677,7 +692,8 @@ class Result:
+@@ -677,7 +695,8 @@ class Result:
  
      def get(self, index):
          """ Returns the Pareto optimal solution at the given index. """
@@ -217,7 +225,7 @@ index 52481de..f571971 100644
  
  class ResultIterator:
      """ Iterates over the solutions in a Pareto optimal set. """
-@@ -687,7 +703,10 @@ class ResultIterator:
+@@ -687,7 +706,10 @@ class ResultIterator:
          self.result = result
          self.index = -1
  
@@ -229,7 +237,7 @@ index 52481de..f571971 100644
          """ Returns the next Pareto optimal solution in the set. """
          self.index = self.index + 1
  
-@@ -696,6 +715,10 @@ class ResultIterator:
+@@ -696,6 +718,10 @@ class ResultIterator:
          else:
              return self.result.get(self.index)
  
