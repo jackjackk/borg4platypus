@@ -1,8 +1,6 @@
 #+TITLE: borg4platypus
 #+OPTIONS: toc:nil h:1 ^:nil
 
-* Purpose
-
 Provide an (HACKY & EXPERIMENTAL) Algorithm class in the Platypus framework that runs the C version of BORG under the hood, either serially or in parallel.
 
 * Requirements
@@ -51,7 +49,7 @@ Provide an (HACKY & EXPERIMENTAL) Algorithm class in the Platypus framework that
   #+END_SRC
 
 * Usage
-Check ~examples/*.py~. Just use ~ExternalBorgC~ as an ~Algorithm~ class which requires an ~epsilons~ parameter (either single-valued or a list, i.e. one epsilon for each objective) after the problem argument. Whether a serial or parallel instance is launched depends on the ~mpirun~ argument.
+Check ~examples/*.py~. Just use ~ExternalBorgC~ as an ~Algorithm~ class which requires an ~epsilons~ parameter (either single-valued or a list, i.e. one epsilon for each objective) after the ~problem~ argument. Whether a serial or parallel instance is launched depends on the ~mpirun~ argument.
  
 * License
 
