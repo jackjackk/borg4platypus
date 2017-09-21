@@ -1,5 +1,7 @@
 from platypus.algorithms import Algorithm
-from platypus.core import Solution
+from platypus.core import Solution, Problem
+from borg import Direction
+
 import logging
 
 LOGGER = logging.getLogger(f"Platypus")
@@ -35,6 +37,11 @@ class BorgC(Algorithm):
 
         problem.borg_function = problem_function
         self.problem = problem
+        platypus2borg_directions = {
+            Problem.MAXIMIZE: Direction.MAXIMIZE,
+            Problem.MINIMIZE: Direction.MINIMIZE
+        }
+        self.directions = [platypus2borg_directions[d] for d in problem.directions]
 
         '''
         solution_fields = ['variables', 'objectives']
@@ -55,7 +62,7 @@ class BorgC(Algorithm):
         self.borg = borg
         if self.seed is not None:
             self.borg.Configuration.seed(self.seed)
-        borg_obj = self.borg.Borg(self.problem.nvars, self.problem.nobjs, self.problem.nconstrs, self.problem.borg_function)
+        borg_obj = self.borg.Borg(self.problem.nvars, self.problem.nobjs, self.problem.nconstrs, self.problem.borg_function, directions=self.directions)
         borg_obj.setBounds(*[[vtype.min_value, vtype.max_value] for vtype in self.problem.types])
         borg_obj.setEpsilons(*self.epsilons)
         return borg_obj
