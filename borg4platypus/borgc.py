@@ -1,13 +1,28 @@
 from platypus.algorithms import Algorithm
 from platypus.core import Solution, Problem
-from borg import Direction
-
+from tqdm import tqdm
 import logging
+import os
+import sys
+import numpy as np
 
-LOGGER = logging.getLogger(f"Platypus")
+LOGGER = logging.getLogger("borg4platypus")
+DEFAULT_EXTRA_BORGLIBDIR = os.path.join(os.environ['HOME'], 'tools', 'borg', 'build', 'lib')
+
+
+def _load_default_libpath():
+    for libpath in [f'{prefix_libpath}_LIBRARY_PATH' for prefix_libpath in ['DYLD', 'LD']]:
+        os.environ[libpath] = os.environ.get(libpath, '') + os.pathsep + DEFAULT_EXTRA_BORGLIBDIR
+_load_default_libpath()
+from borg import Direction
 
 
 class BorgC(Algorithm):
+
+    @staticmethod
+    def load_default_libpath():
+        _load_default_libpath()
+
     def __init__(self, problem, epsilons, seed=None, log_frequency=None, name=None):
         """
         Wraps the Python wrapper of BORG to make it compatible w/ Platypus.
@@ -33,6 +48,10 @@ class BorgC(Algorithm):
             solution.variables[:] = vars
             solution.evaluate()
             constrs = [f(x) for (f, x) in zip(solution.problem.constraints, solution.constraints)]
+            try:
+                problem.function._progress_bar.update()
+            except Exception as e:
+                LOGGER.error(e, exc_info=True)
             return solution.objectives._data, constrs
 
         problem.borg_function = problem_function
@@ -81,7 +100,10 @@ class BorgC(Algorithm):
                 s = Solution(self.problem)
                 s.variables[:] = borg_sol.getVariables()
                 s.evaluate()
-                assert s.objectives[:] == borg_sol.getObjectives()
+                try:
+                    np.testing.assert_array_almost_equal(s.objectives[:], borg_sol.getObjectives())
+                except Exception as e:
+                    LOGGER.warning(f'x = {s.variables[:]}, {e}')
                 result.append(s)
         return result
 
@@ -105,6 +127,9 @@ class BorgC(Algorithm):
 
 class SerialBorgC(BorgC):
     def borg_solve(self, borg_obj):
+        # Init progress bar
+        self.problem.function._progress_bar = tqdm(range(self.settings['maxEvaluations']))
+        # Run BORG
         return borg_obj.solve(self.settings)
 
 
@@ -127,17 +152,23 @@ class MpiBorgC(BorgC):
         super(MpiBorgC, self).borg_deinit()
 
     def borg_solve(self, borg_obj):
+        # Init progress bar
+        self.problem.function._progress_bar = tqdm(range(self.settings['maxEvaluations']))
+        # Run BORG
         borg_res = borg_obj.solveMPI(**self.settings)
         return borg_res
 
 
 class ExternalBorgC(BorgC):
-    def __init__(self, problem, epsilons, seed=None, log_frequency=None, name=None, mpirun=None):
+    def __init__(self, *args, mpirun=None, **kwargs):
         if mpirun == '-np 1':
             mpirun = None
         self.mpirun = mpirun
-        super(ExternalBorgC, self).__init__(problem, epsilons=epsilons, seed=seed,
-                                       log_frequency=log_frequency, name=name)
+        self.loglevel = LOGGER.getEffectiveLevel()
+        super(ExternalBorgC, self).__init__(*args, **kwargs)
+        kwargs.pop('name', None)
+        self.borg_kwargs = kwargs
+        self.borg_args = args
 
 
     def borg_init(self):
@@ -155,9 +186,8 @@ class ExternalBorgC(BorgC):
             passed_name = None
         else:
             passed_name = os.path.join(os.getcwd(), self.name)
-        algo2dump = borg_class(self.problem, epsilons=self.epsilons, seed=self.seed,
-                               log_frequency=self.log_frequency,
-                               name=passed_name)
+        algo2dump = borg_class(*self.borg_args,
+                               name=passed_name, **self.borg_kwargs)
         from tempfile import TemporaryDirectory
         self.tempdir = TemporaryDirectory()
         self.borg_algo_dumpfile = os.path.join(self.tempdir.name, 'algo.dmp')
@@ -170,9 +200,20 @@ class ExternalBorgC(BorgC):
             f.write(f"""
 import dill
 import sys
+import logging
+import os
+logging.basicConfig(level={self.loglevel})
 sys.path.append("{os.getcwd()}")
+os.environ['LD_LIBRARY_PATH'] = "{os.environ['LD_LIBRARY_PATH']}"
+os.environ['DYLD_LIBRARY_PATH'] = "{os.environ['DYLD_LIBRARY_PATH']}"
+#from pprint import pprint
+#pprint(os.environ)
 with open("{self.borg_algo_dumpfile}", "rb") as f:
-    algo = dill.load(f) 
+    algo = dill.load(f)
+try:
+    algo.rank = int(os.environ.get('OMPI_COMM_WORLD_RANK'))
+except:
+    pass
 algo.run({self.settings['maxEvaluations']})
 if algo.result:
     with open("{self.borg_result_dumpfile}", "wb") as f:
@@ -182,7 +223,7 @@ if algo.result:
 
     def borg_solve(self, borg_obj):
         import subprocess
-        cmd_args = self.borg_launcher + ['python', self.borg_runscript,]
+        cmd_args = self.borg_launcher + [sys.executable, self.borg_runscript,]
         cmd_args_string = ' '.join(cmd_args)
         LOGGER.info(f'Launching "{cmd_args_string}"')
         proc = subprocess.Popen(cmd_args)
