@@ -10,6 +10,6 @@ setup(name='borg4platypus',
       license="GNU GPL version 3",
       url='https://github.com/jackjackk/borg4platypus',
       packages=['borg4platypus'],
-      install_requires=['platypus', 'dill'],
+      install_requires=['platypus', 'dill', 'tqdm', 'numpy'],
       classifiers=[],
      )

@@ -12,9 +12,9 @@ Provide an (HACKY & EXPERIMENTAL) Algorithm class in the Platypus framework that
   cd Platypus
   python -m pip install --user -e .
   #+END_SRC
-- [[https://github.com/uqfoundation/dill][dill]] installed, e.g.
+- [[https://github.com/uqfoundation/dill][dill]], [[https://github.com/tqdm/tqdm][tqdm]], [[http://www.numpy.org/][numpy]] installed, e.g.
   #+BEGIN_SRC shell
-  conda install dill
+  conda install dill tqdm numpy
   #+END_SRC
 - [[https://bitbucket.org/dmh309/serial-borg-moea][Serial Borg MOEA]] installed via git, e.g.
   #+BEGIN_SRC shell
