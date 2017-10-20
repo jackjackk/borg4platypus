@@ -1,48 +1,167 @@
-From 6e265b430f9c01339da99ac87aae3c9d2bab2ebb Mon Sep 17 00:00:00 2001
+From 4b89cd37654a43cb51f0c1588821c7ccfbb772af Mon Sep 17 00:00:00 2001
 From: jack <jackjackk@gmail.com>
-Date: Wed, 13 Sep 2017 23:12:44 -0400
-Subject: [PATCH] Patch to make borg.py work w/ Python 3.6 & borg4platypus
+Date: Thu, 19 Oct 2017 21:28:27 -0400
+Subject: [PATCH] patched BitBucket master to work w/ Python 3.6 &
+ borg4platypus
 
 ---
- plugins/Python/borg.py | 82 +++++++++++++++++++++++++++++++++-----------------
- plugins/Python/test.py |  2 +-
- 2 files changed, 55 insertions(+), 29 deletions(-)
+ dtlz2.py               |  41 ++++++++--------
+ plugins/Python/borg.py | 130 +++++++++++++++++++++++++------------------------
+ plugins/Python/test.py |   2 +-
+ 3 files changed, 87 insertions(+), 86 deletions(-)
 
+diff --git a/dtlz2.py b/dtlz2.py
+index ab0a88b..991342c 100644
+--- a/dtlz2.py
++++ b/dtlz2.py
+@@ -14,31 +14,30 @@ nobjs = 2
+ k = nvars - nobjs + 1
+ 
+ while True:
+-	# Read the next line from standard input
+-	line = raw_input()
++    # Read the next line from standard input
++    line = input()
+ 
+-	# Stop if the Borg MOEA is finished
+-	if line == "":
+-		break
++    # Stop if the Borg MOEA is finished
++    if line == "":
++        break
+ 
+-	# Parse the decision variables from the input
+-	vars = map(float, line.split())
++    # Parse the decision variables from the input
++    vars = list(map(float, line.split()))
+ 
+-	# Evaluate the DTLZ2 problem
+-	g = 0
++    # Evaluate the DTLZ2 problem
++    g = 0
+ 
+-	for i in range(nvars-k, nvars):
+-		g = g + (vars[i] - 0.5)**2
++    for i in range(nvars - k, nvars):
++        g += (vars[i] - 0.5) ** 2
+ 
+-	objs = [1.0 + g]*nobjs
++    objs = [1.0 + g] * nobjs
+ 
+-	for i in range(nobjs):
+-		for j in range(nobjs-i-1):
+-			objs[i] = objs[i] * cos(0.5 * pi * vars[j])
+-		if i != 0:
+-			objs[i] = objs[i] * sin(0.5 * pi * vars[nobjs-i-1])
+-
+-	# Print objectives to standard output, flush to write immediately
+-	print " ".join(["%0.17f" % obj for obj in objs])
+-	stdout.flush()
++    for i in range(nobjs):
++        for j in range(nobjs - i - 1):
++            objs[i] = objs[i] * cos(0.5 * pi * vars[j])
++        if i != 0:
++            objs[i] = objs[i] * sin(0.5 * pi * vars[nobjs - i - 1])
+ 
++    # Print objectives to standard output, flush to write immediately
++    print(" ".join(["%0.17f" % obj for obj in objs]))
++    stdout.flush()
 diff --git a/plugins/Python/borg.py b/plugins/Python/borg.py
-index 52481de..3b9c30b 100644
+index 52481de..83dd416 100644
 --- a/plugins/Python/borg.py
 +++ b/plugins/Python/borg.py
-@@ -111,15 +111,18 @@ class Configuration:
-                 if os.name == "nt":
-                     Configuration.libborg = WinDLL(path)
-                     Configuration.stdcall = True
-+        elif sys.platform == "darwin":
-+            Configuration.libborg = CDLL("libborg.dylib")
-+            Configuration.stdcall = False
-         elif os.name == "posix":
-             try:
+@@ -36,6 +36,7 @@ from ctypes import *
+ import os
+ import sys
+ import time
++from ctypes.util import find_library
+ 
+ terminate=False
+ 
+@@ -74,17 +75,13 @@ class Configuration:
+         using the Borg MOEA.
+         """
+ 
++
+         if path:
+             Configuration.libc = CDLL(path)
+-        elif os.name == "posix":
+-            try:
+-                Configuration.libc = CDLL("libc.so.6")
+-            except OSError:
+-                return
+         elif os.name == "nt" and cdll.msvcrt:
+             Configuration.libc = cdll.msvcrt
+         else:
+-            return
++            Configuration.libc = CDLL(find_library('c'))
+ 
+         try:
+             Configuration.stdout = Configuration.libc.fdopen(sys.stdout.fileno(), "w")
+@@ -92,7 +89,7 @@ class Configuration:
+             Configuration.stdout = Configuration.libc._fdopen(sys.stdout.fileno(), "w")
+ 
+     @staticmethod
+-    def setBorgLibrary(path=None):
++    def setBorgLibrary(path='borg'):
+         """ Override the location of the Borg MOEA shared object.
+ 
+         If the path is not specified, this method attempts to auto-detect the location
+@@ -101,37 +98,22 @@ class Configuration:
+         user to manually invoke this method before using the Borg MOEA
+         """
+ 
+-        if path:
+-            try:
+-                Configuration.libborg = CDLL(path)
+-                Configuration.libborg.BORG_Copyright
+-                Configuration.stdcall = False
+-            except AttributeError:
+-                # Not using __cdecl, try __stdcall instead
+-                if os.name == "nt":
+-                    Configuration.libborg = WinDLL(path)
+-                    Configuration.stdcall = True
+-        elif os.name == "posix":
+-            try:
 -                Configuration.libborg = CDLL("./libborg.so")
-+                Configuration.libborg = CDLL("libborg.so")
-                 Configuration.stdcall = False
-             except OSError:
-                 return
-         elif os.name == "nt":
-             try:
+-                Configuration.stdcall = False
+-            except OSError:
+-                return
+-        elif os.name == "nt":
+-            try:
 -                Configuration.libborg = CDLL("./borg.dll")
-+                Configuration.libborg = CDLL("borg.dll")
-                 Configuration.libborg.BORG_Copyright
-                 Configuration.stdcall = False
-             except OSError:
-@@ -127,7 +130,7 @@ class Configuration:
-             except AttributeError:
-                 # Not using __cdecl, try __stdcall instead
-                 try:
+-                Configuration.libborg.BORG_Copyright
+-                Configuration.stdcall = False
+-            except OSError:
+-                return
+-            except AttributeError:
+-                # Not using __cdecl, try __stdcall instead
+-                try:
 -                    Configuration.libborg = WinDLL("./borg.dll")
-+                    Configuration.libborg = WinDLL("borg.dll")
-                     Configuration.stdcall = True
-                 except OSError:
-                     return
-@@ -146,7 +149,7 @@ class Configuration:
+-                    Configuration.stdcall = True
+-                except OSError:
+-                    return
+-                    
++        path = find_library(path)
++        if path is None:
++            raise OSError('Unable to locate "{}" lib'.format(path))
++
++        try:
++            Configuration.libborg = CDLL(path)
++            Configuration.libborg.BORG_Copyright
++            Configuration.stdcall = False
++        except AttributeError:
++            # Not using __cdecl, try __stdcall instead
++            if os.name == "nt":
++                Configuration.libborg = WinDLL(path)
++                Configuration.stdcall = True
++            else:
++                raise Exception('Unable to load borg lib')
++
+         # Set result type of functions with non-standard types
+         Configuration.libborg.BORG_Solution_get_variable.restype = c_double
+         Configuration.libborg.BORG_Solution_get_objective.restype = c_double
+@@ -146,7 +128,7 @@ class Configuration:
          if value:
              Configuration.libborg.BORG_Random_seed(c_ulong(value))
          else:
@@ -51,29 +170,27 @@ index 52481de..3b9c30b 100644
  
      @staticmethod
      def enableDebugging():
-@@ -180,15 +183,18 @@ class Configuration:
+@@ -180,27 +162,30 @@ class Configuration:
          except AttributeError:
              # The serial Borg MOEA C library is loaded; switch to parallel
              try:
 -                Configuration.setBorgLibrary("./libborgmm.so")
-+                Configuration.setBorgLibrary("libborgmm.so")
++                Configuration.setBorgLibrary("borgmm")
              except OSError:
                  try:
 -                    Configuration.setBorgLibrary("./libborgms.so")
-+                    Configuration.setBorgLibrary("libborgms.so")
++                    Configuration.setBorgLibrary("borgms")
                  except OSError:
                      raise OSError("Unable to locate the parallel Borg MOEA C library")
  
          # The following line is needed to load the MPI library correctly
 -        CDLL("libmpi.so.0", RTLD_GLOBAL)
-+        try:
-+            CDLL("libmpi.so.0", RTLD_GLOBAL)
-+        except:
-+            CDLL("libmpi.so", RTLD_GLOBAL)
++        CDLL(find_library('mpi'), RTLD_GLOBAL)
  
          # Pass the command-line arguments to MPI_Init
          argc = c_int(len(sys.argv))
-@@ -196,11 +202,14 @@ class Configuration:
+-        CHARPP = c_char_p * len(sys.argv)
++        CHARPP = c_char_p * (len(sys.argv))
          argv = CHARPP()
  
          for i in range(len(sys.argv)):
@@ -91,7 +208,7 @@ index 52481de..3b9c30b 100644
  
          Configuration.startedMPI = True
  
-@@ -307,6 +316,7 @@ class Borg:
+@@ -307,6 +292,7 @@ class Borg:
              self.CMPFUNC = CFUNCTYPE(c_int, POINTER(c_double), POINTER(c_double), POINTER(c_double))
  
          self.callback = self.CMPFUNC(self.function)
@@ -99,7 +216,7 @@ index 52481de..3b9c30b 100644
          self.reference = c_void_p(Configuration.libborg.BORG_Problem_create(numberOfVariables, numberOfObjectives, numberOfConstraints, self.callback))
  
          if bounds:
-@@ -373,7 +383,7 @@ class Borg:
+@@ -373,7 +359,7 @@ class Borg:
          Configuration.libborg.BORG_Problem_set_bounds(self.reference, index, c_double(lowerBound), c_double(upperBound))
  
      def solveMPI(self, islands=1, maxTime=None, maxEvaluations=None, initialization=None, runtime=None,
@@ -108,7 +225,7 @@ index 52481de..3b9c30b 100644
          """ Runs the master-slave or multi-master Borg MOEA using MPI.
  
          islands        - The number of islands
-@@ -385,6 +395,7 @@ class Borg:
+@@ -385,6 +371,7 @@ class Borg:
          allEvaluations - Filename pattern for saving all evaluations (the filename should include
                           one %d which gets replaced by the island index).  Since this can quickly
                           generate large files, use this option with caution.
@@ -116,7 +233,7 @@ index 52481de..3b9c30b 100644
          
          Note: All nodes must invoke solveMPI.  However, only one node will return the discovered
          Pareto optimal solutions.  The rest will return None.
-@@ -412,15 +423,19 @@ class Borg:
+@@ -412,15 +399,19 @@ class Borg:
              Configuration.libborg.BORG_Algorithm_ms_max_evaluations(c_int(maxEvaluations))
  
          if initialization and islands > 1:
@@ -139,7 +256,7 @@ index 52481de..3b9c30b 100644
  
          return Result(result, self) if result else None
  
-@@ -438,36 +453,37 @@ class Borg:
+@@ -438,36 +429,37 @@ class Borg:
  
          maxEvaluations = settings.get("maxEvaluations", 10000)
          start = time.clock()
@@ -186,7 +303,7 @@ index 52481de..3b9c30b 100644
          Configuration.libborg.BORG_Algorithm_set_operator(algorithm, 0, sbx)
          Configuration.libborg.BORG_Algorithm_set_operator(algorithm, 1, de)
          Configuration.libborg.BORG_Algorithm_set_operator(algorithm, 2, pcx)
-@@ -542,7 +558,8 @@ class Borg:
+@@ -542,7 +534,8 @@ class Borg:
                  if fp is None:
                      statistics.append(entry)
                  else:
@@ -196,7 +313,7 @@ index 52481de..3b9c30b 100644
                      if runtimeformat == 'optimizedv':
                          row = ["{0}".format(entry[dynamic]) for dynamic in dynamics_header]
                          fp.write("//")
-@@ -586,7 +603,8 @@ class Borg:
+@@ -586,7 +579,8 @@ class Borg:
  
                  lastSnapshot = currentEvaluations
  
@@ -206,7 +323,7 @@ index 52481de..3b9c30b 100644
          if "runtimefile" in settings:
              fp.close()
  
-@@ -643,7 +661,7 @@ class Solution:
+@@ -643,7 +637,7 @@ class Solution:
  
      def display(self, out=sys.stdout, separator=" "):
          """ Prints the decision variables, objectives, and constraints to standard output. """
@@ -215,7 +332,7 @@ index 52481de..3b9c30b 100644
  
      def violatesConstraints(self):
          """ Returns True if this solution violates one or more constraints; False otherwise. """
-@@ -677,7 +695,8 @@ class Result:
+@@ -677,7 +671,8 @@ class Result:
  
      def get(self, index):
          """ Returns the Pareto optimal solution at the given index. """
@@ -225,7 +342,7 @@ index 52481de..3b9c30b 100644
  
  class ResultIterator:
      """ Iterates over the solutions in a Pareto optimal set. """
-@@ -687,7 +706,10 @@ class ResultIterator:
+@@ -687,7 +682,10 @@ class ResultIterator:
          self.result = result
          self.index = -1
  
@@ -237,13 +354,13 @@ index 52481de..3b9c30b 100644
          """ Returns the next Pareto optimal solution in the set. """
          self.index = self.index + 1
  
-@@ -696,6 +718,10 @@ class ResultIterator:
+@@ -696,6 +694,10 @@ class ResultIterator:
          else:
              return self.result.get(self.index)
  
 +    def next(self):
 +        return self.__next__()
-+
++    
 +
  def _functionWrapper(function, numberOfVariables, numberOfObjectives, numberOfConstraints, directions=None):
      """ Wraps a Python evaluation function and converts it to the function signature
@@ -260,5 +377,5 @@ index 0e828e5..bf36700 100644
 +	print(solution.getObjectives())
  
 -- 
-2.14.1
+2.14.2
 
