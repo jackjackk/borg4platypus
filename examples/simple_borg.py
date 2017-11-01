@@ -1,7 +1,7 @@
 from platypus import DTLZ2
 from platypus.core import EpsilonBoxArchive, Solution
 from platypus.indicators import Hypervolume
-from borg4platypus import ExternalBorgC
+from borg4platypus import ExternalBorgC, SerialBorgC
 import logging
 
 logging.basicConfig(level=logging.DEBUG)

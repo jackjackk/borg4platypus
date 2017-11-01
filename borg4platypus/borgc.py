@@ -49,7 +49,7 @@ class BorgC(Algorithm):
             solution.evaluate()
             constrs = [f(x) for (f, x) in zip(solution.problem.constraints, solution.constraints)]
             try:
-                problem.function._progress_bar.update()
+                problem.borg_function._progress_bar.update()
             except Exception as e:
                 LOGGER.error(e, exc_info=True)
             return solution.objectives._data, constrs
@@ -128,7 +128,7 @@ class BorgC(Algorithm):
 class SerialBorgC(BorgC):
     def borg_solve(self, borg_obj):
         # Init progress bar
-        self.problem.function._progress_bar = tqdm(range(self.settings['maxEvaluations']))
+        self.problem.borg_function._progress_bar = tqdm(range(self.settings['maxEvaluations']))
         # Run BORG
         return borg_obj.solve(self.settings)
 
