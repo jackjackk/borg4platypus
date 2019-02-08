@@ -1,7 +1,7 @@
 #+TITLE: borg4platypus
 #+OPTIONS: toc:nil h:1 ^:nil
 
-Provide an (HACKY & EXPERIMENTAL) Algorithm class in the Platypus framework that runs the C version of BORG under the hood, either serially or in parallel.
+Provide an Algorithm class in the Platypus framework that runs the C version of BORG under the hood, either serially or in parallel.
 
 * Requirements
 
